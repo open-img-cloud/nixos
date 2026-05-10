@@ -80,9 +80,10 @@
     "C.UTF-8/UTF-8"
   ];
 
-  # 3. Drop the X11 client libs that some headless tools transitively
-  #    pull in (~50-100 MB).
-  environment.noXlibs = true;
+  # 3. (Removed) `environment.noXlibs = true` — option deleted in
+  #    NixOS 25.05+. Upstream rationale: it caused surprising
+  #    breakages. The X libs we'd save are small (~50-100 MB) and
+  #    the bigger wins are the channel + docs.
 
   # `copyChannel` is a make-disk-image argument, not a NixOS module
   # option — see flake.nix.template's customFormats override which

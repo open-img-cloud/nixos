@@ -69,6 +69,7 @@ jobs:
       # Nix via the official installer at the start of the script.
       build_container: 'ubuntu:24.04'
       verify_builder: false
+      runtime_smoke_login_user: nixos
       publish: ${{ inputs.publish == true || github.event_name == 'push' }}
       sync_latest: true
     secrets: inherit

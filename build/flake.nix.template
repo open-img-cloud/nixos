@@ -30,8 +30,12 @@
           ./config.nix
         ];
 
-        customFormats = { "my-openstack" = import ./openstack-qcow2-compressed.nix; };
-        format = "my-openstack";
+        # Use nixos-generators's built-in `openstack` format. The legacy
+        # repo had a custom openstack-qcow2-compressed.nix wrapper that
+        # imported `modules/installer/cd-dvd/channel.nix`; that file was
+        # removed in newer NixOS releases (gone by 25.11), so we rely
+        # on the upstream format which is maintained.
+        format = "openstack";
       };
     };
   };

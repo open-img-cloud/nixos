@@ -143,7 +143,6 @@ build/
   detect-upstream.sh                        prints latest nixos-X.Y branch on stdout
   flake.nix.template                        flake.nix with VERSION token to substitute
   config.nix                                NixOS module (bootloader, openssh, openstack-init)
-  openstack-qcow2-compressed.nix            custom DIB-style format wrapper
 .github/workflows/
   release.yml                               calls build-nix-flake-image.yml on tag push
   watch.yml                                 daily cron, calls upstream-watch.yml

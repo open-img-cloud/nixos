@@ -3,11 +3,14 @@
 # Receives: $1 = output dir, $2 = version (e.g. "25.11").
 # Must produce: $1/nixos-${version}-x86_64.qcow2
 #
-# Container expected: nixos/nix:2.21.2 (preinstalled Nix; the prep step
-# of the reusable adds gettext + curl + git + sudo via apk for the
-# downstream cosign / publish actions).
+# Container expected: ubuntu:24.04 (glibc, so GHA Node24 binaries
+# work; nixos/nix:2.21.2 is Alpine/musl and triggers
+# 'exec /__e/node24/bin/node: no such file or directory'). Nix is
+# installed by this script at startup via the official multi-user
+# installer in --no-daemon mode.
 #
 # Build pipeline:
+#   0. Install Nix via curl|sh (single-user mode, no daemon)
 #   1. Enable flakes + kvm features in /etc/nix/nix.conf
 #   2. Render flake.nix from flake.nix.template (substitute VERSION)
 #   3. nix build .#openstack       (calls nixos-generators with our config.nix)
@@ -22,6 +25,18 @@ CONFIG_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "[nix-build] out_dir=$OUT_DIR version=$VERSION"
 echo "[nix-build] config_dir=$CONFIG_DIR"
+
+# --- Install Nix (single-user, no daemon) ---------------------------
+# The reusable workflow's prep step gave us curl + xz-utils + sudo +
+# ca-certificates already. The Nix installer drops binaries into
+# /nix/store and adds a profile script we source.
+if ! command -v nix >/dev/null 2>&1; then
+  echo "[nix-build] installing Nix..."
+  sh <(curl -fsSL https://nixos.org/nix/install) --no-daemon --yes
+  # shellcheck source=/dev/null
+  . /root/.nix-profile/etc/profile.d/nix.sh
+fi
+echo "[nix-build] nix version: $(nix --version)"
 
 # --- Enable flakes (and KVM system features for nixos-generators) ---
 mkdir -p /etc/nix

@@ -61,7 +61,13 @@ jobs:
       # (cosign / publish-image) are simpler on a real Linux VM with
       # Docker than on our self-hosted Rocky+rootless-Podman runners.
       runner_labels: '["ubuntu-latest"]'
-      build_container: 'nixos/nix:2.21.2'
+      # Use ubuntu:24.04 (glibc) instead of nixos/nix:2.21.2 (Alpine/musl):
+      # GitHub Actions ships Node24 binaries built against glibc, and they
+      # error out with "exec /__e/node24/bin/node: no such file or
+      # directory" inside an Alpine container (misleading message from
+      # ld-musl when it can't load a glibc binary). nix-build.sh installs
+      # Nix via the official installer at the start of the script.
+      build_container: 'ubuntu:24.04'
       verify_builder: false
       publish: ${{ inputs.publish == true || github.event_name == 'push' }}
       sync_latest: true

@@ -22,9 +22,13 @@
   '';
 
   # SSH server with root login disabled (force using the `nixos` user).
+  # `lib.mkForce` because nixos-generators' built-in `openstack` format
+  # already sets PermitRootLogin = "prohibit-password" via its
+  # virtualisation/openstack-config.nix module; without mkForce both
+  # definitions conflict at evaluation time.
   services.openssh = {
     enable = true;
-    settings.PermitRootLogin = "no";
+    settings.PermitRootLogin = lib.mkForce "no";
   };
 
   # Enable a getty on tty1 so the qemu serial console gives a login prompt.

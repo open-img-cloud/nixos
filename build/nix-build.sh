@@ -49,9 +49,14 @@ EOF
 if ! command -v nix >/dev/null 2>&1; then
   echo "[nix-build] installing Nix..."
   sh <(curl -fsSL https://nixos.org/nix/install) --no-daemon --yes
-  # shellcheck source=/dev/null
-  . /root/.nix-profile/etc/profile.d/nix.sh
 fi
+# Sourcing /root/.nix-profile/etc/profile.d/nix.sh sometimes doesn't
+# propagate PATH correctly under bash --noprofile (the script uses
+# `export PATH=...:$PATH` in a subshell context). Add Nix's bin
+# directories to PATH explicitly to cover both single-user
+# (~/.nix-profile/bin) and root single-user
+# (/nix/var/nix/profiles/default/bin) layouts.
+export PATH="/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
 echo "[nix-build] nix version: $(nix --version)"
 
 # --- Render flake.nix from template -----------------------------------

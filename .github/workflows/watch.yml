@@ -1,0 +1,16 @@
+name: Watch upstream
+
+on:
+  schedule:
+    - cron: '59 6 * * *'   # daily 06:59 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  watch:
+    uses: open-img-cloud/.github/.github/workflows/upstream-watch.yml@main
+    with:
+      os_name: nixos

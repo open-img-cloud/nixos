@@ -1,0 +1,38 @@
+{
+  description = "NixOS OpenStack image build configuration";
+
+  inputs = {
+    # Pinned at build time by nix-build.sh: `nixos-VERSION` is replaced
+    # with the concrete release branch (e.g. `nixos-25.11`).
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-VERSION";
+    nixos-generators = {
+      url = "github:nix-community/nixos-generators";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { self, nixpkgs, nixos-generators, ... }: {
+    packages.x86_64-linux = {
+      openstack = nixos-generators.nixosGenerate {
+        system = "x86_64-linux";
+
+        modules = [
+          # Pin nixpkgs to the flake input, so packages installed in the
+          # built image come from inputs.nixpkgs.url.
+          ({ ... }: { nix.registry.nixpkgs.flake = nixpkgs; })
+
+          # `system.stateVersion` controls stateful-data defaults
+          # (file paths, DB on-disk formats). Pin to the same release
+          # we're tracking. Subsequent builds keep the same value
+          # unless the README explicitly says otherwise.
+          ({ ... }: { system.stateVersion = "VERSION"; })
+
+          ./config.nix
+        ];
+
+        customFormats = { "my-openstack" = import ./openstack-qcow2-compressed.nix; };
+        format = "my-openstack";
+      };
+    };
+  };
+}

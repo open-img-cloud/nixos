@@ -1,0 +1,7 @@
+# Override global build/ exclusion: this repo uses build/ for OIC build hooks (tracked).
+!/build/
+
+# Local Nix build artifacts
+result
+result-*
+.direnv

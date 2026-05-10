@@ -1,0 +1,68 @@
+name: Build & publish image
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'NixOS release (e.g. 25.11). Maps to nixos-X.Y branch on github.com/NixOS/nixpkgs.'
+        required: false
+      publish:
+        description: 'If false, skip upload + CF purge (PR / dry-run validation)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write   # cosign keyless via GitHub OIDC
+
+jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - id: v
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ inputs.version }}" ]]; then
+            v="${{ inputs.version }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            v="${GITHUB_REF#refs/tags/v}"
+          elif [[ -f VERSION ]]; then
+            v=$(tr -d '[:space:]' < VERSION)
+          else
+            echo "::error::no version provided and no VERSION file found"
+            exit 1
+          fi
+          # NixOS releases are X.Y (year and month, e.g. 25.05, 25.11).
+          if [[ ! "$v" =~ ^[0-9]{2}\.[0-9]{2}$ ]]; then
+            echo "::error::version '$v' is not NixOS-release form (expected XX.YY, e.g. 25.11)"
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Resolved: version=$v"
+
+  build:
+    needs: resolve-version
+    name: Build
+    uses: open-img-cloud/.github/.github/workflows/build-nix-flake-image.yml@main
+    with:
+      os_name: nixos
+      version: ${{ needs.resolve-version.outputs.version }}
+      output_filename: 'nixos-{version}-x86_64.qcow2'
+      build_script: build/nix-build.sh
+      # Run on GH-hosted ubuntu-latest like the DIB workflows — Nix
+      # builds inside its own sandbox, but the surrounding actions
+      # (cosign / publish-image) are simpler on a real Linux VM with
+      # Docker than on our self-hosted Rocky+rootless-Podman runners.
+      runner_labels: '["ubuntu-latest"]'
+      build_container: 'nixos/nix:2.21.2'
+      verify_builder: false
+      publish: ${{ inputs.publish == true || github.event_name == 'push' }}
+      sync_latest: true
+    secrets: inherit

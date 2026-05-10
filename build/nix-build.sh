@@ -63,7 +63,9 @@ echo "[nix-build] nix version: $(nix --version)"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-cp "$CONFIG_DIR/config.nix" "$work/"
+cp "$CONFIG_DIR/config.nix" \
+   "$CONFIG_DIR/openstack-slim.nix" \
+   "$work/"
 
 sed "s/VERSION/${VERSION}/g" "$CONFIG_DIR/flake.nix.template" > "$work/flake.nix"
 echo "[nix-build] rendered flake.nix:"

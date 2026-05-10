@@ -30,12 +30,14 @@
           ./config.nix
         ];
 
-        # Use nixos-generators's built-in `openstack` format. The legacy
-        # repo had a custom openstack-qcow2-compressed.nix wrapper that
-        # imported `modules/installer/cd-dvd/channel.nix`; that file was
-        # removed in newer NixOS releases (gone by 25.11), so we rely
-        # on the upstream format which is maintained.
-        format = "openstack";
+        # Custom format wrapper that's identical to the built-in
+        # `openstack` format but calls make-disk-image with
+        # `copyChannel = false`. The upstream openstack format bakes
+        # the full nixpkgs channel into the qcow2 (~500-1500 MB);
+        # cloud images don't need it (operators bootstrap channels
+        # via cloud-config or `nix-channel --add`).
+        customFormats = { "openstack-slim" = import ./openstack-slim.nix; };
+        format = "openstack-slim";
       };
     };
   };

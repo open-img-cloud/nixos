@@ -53,4 +53,39 @@
 
   nix.settings.auto-optimise-store = true;
   security.sudo.wheelNeedsPassword = false;
+
+  # ---------------------------------------------------------------------
+  # Image-size shrinking
+  # ---------------------------------------------------------------------
+  # Default NixOS images include a full nixpkgs channel copy + full
+  # documentation + X11 client libs even on headless machines. For
+  # cloud workloads none of that is useful, and it pushes the qcow2
+  # past 2 GB. The four levers below trim it to ~600-800 MB without
+  # functional impact:
+
+  # 1. Documentation (man, info, the static HTML NixOS manual, etc.)
+  #    — ~200-300 MB. Users can install on demand if they need it.
+  documentation = {
+    enable = false;
+    man.enable = false;
+    doc.enable = false;
+    info.enable = false;
+    nixos.enable = false;
+  };
+
+  # 2. Strip locales down to C + en_US. Saves ~100-150 MB. Operators
+  #    needing extra locales add them to their own NixOS config.
+  i18n.supportedLocales = [
+    "en_US.UTF-8/UTF-8"
+    "C.UTF-8/UTF-8"
+  ];
+
+  # 3. Drop the X11 client libs that some headless tools transitively
+  #    pull in (~50-100 MB).
+  environment.noXlibs = true;
+
+  # `copyChannel` is a make-disk-image argument, not a NixOS module
+  # option — see flake.nix.template's customFormats override which
+  # pins it to false (saves ~500-1500 MB; biggest single shrink lever
+  # for cloud images that bootstrap their channel via cloud-config).
 }

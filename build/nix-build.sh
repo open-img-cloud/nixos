@@ -27,9 +27,25 @@ echo "[nix-build] out_dir=$OUT_DIR version=$VERSION"
 echo "[nix-build] config_dir=$CONFIG_DIR"
 
 # --- Install Nix (single-user, no daemon) ---------------------------
-# The reusable workflow's prep step gave us curl + xz-utils + sudo +
-# ca-certificates already. The Nix installer drops binaries into
-# /nix/store and adds a profile script we source.
+# Pre-create /etc/nix/nix.conf BEFORE running the installer:
+# - `build-users-group = ` (empty) so the installer doesn't fail on
+#   the missing `nixbld` group (group + 32 users only get created in
+#   multi-user/daemon mode, which we can't use in a container without
+#   systemd).
+# - flakes + nix-command experimental features so we can use them
+#   immediately (nix.conf entries persist across the install).
+# - system-features = kvm so nixos-generators is happy invoking the
+#   guest kernel build.
+# The installer otherwise refuses-to-install-as-root unless it sees
+# the nixbld group already.
+mkdir -p /etc/nix
+cat > /etc/nix/nix.conf <<'EOF'
+build-users-group =
+experimental-features = nix-command flakes
+system-features = kvm
+sandbox = false
+EOF
+
 if ! command -v nix >/dev/null 2>&1; then
   echo "[nix-build] installing Nix..."
   sh <(curl -fsSL https://nixos.org/nix/install) --no-daemon --yes
@@ -37,13 +53,6 @@ if ! command -v nix >/dev/null 2>&1; then
   . /root/.nix-profile/etc/profile.d/nix.sh
 fi
 echo "[nix-build] nix version: $(nix --version)"
-
-# --- Enable flakes (and KVM system features for nixos-generators) ---
-mkdir -p /etc/nix
-{
-  echo 'experimental-features = nix-command flakes'
-  echo 'system-features = kvm'
-} >> /etc/nix/nix.conf
 
 # --- Render flake.nix from template -----------------------------------
 work=$(mktemp -d)

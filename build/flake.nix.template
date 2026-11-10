@@ -1,44 +1,37 @@
 {
   description = "NixOS OpenStack image build configuration";
 
-  inputs = {
-    # Pinned at build time by nix-build.sh: `nixos-VERSION` is replaced
-    # with the concrete release branch (e.g. `nixos-25.11`).
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-VERSION";
-    nixos-generators = {
-      url = "github:nix-community/nixos-generators";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
+  # Pinned at build time by nix-build.sh: `nixos-VERSION` is replaced
+  # with the concrete release branch (e.g. `nixos-26.05`).
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-VERSION";
 
-  outputs = { self, nixpkgs, nixos-generators, ... }: {
-    packages.x86_64-linux = {
-      openstack = nixos-generators.nixosGenerate {
+  outputs = { self, nixpkgs, ... }:
+    let
+      nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-
         modules = [
           # Pin nixpkgs to the flake input, so packages installed in the
           # built image come from inputs.nixpkgs.url.
           ({ ... }: { nix.registry.nixpkgs.flake = nixpkgs; })
 
           # `system.stateVersion` controls stateful-data defaults
-          # (file paths, DB on-disk formats). Pin to the same release
-          # we're tracking. Subsequent builds keep the same value
-          # unless the README explicitly says otherwise.
+          # (file paths, DB on-disk formats). Pinned to the release we
+          # track; keep it unless the README explicitly says otherwise.
           ({ ... }: { system.stateVersion = "VERSION"; })
 
           ./config.nix
-        ];
 
-        # Custom format wrapper that's identical to the built-in
-        # `openstack` format but calls make-disk-image with
-        # `copyChannel = false`. The upstream openstack format bakes
-        # the full nixpkgs channel into the qcow2 (~500-1500 MB);
-        # cloud images don't need it (operators bootstrap channels
-        # via cloud-config or `nix-channel --add`).
-        customFormats = { "openstack-slim" = import ./openstack-slim.nix; };
-        format = "openstack-slim";
+          # Native image framework (nixpkgs >= 25.05, replaces
+          # nix-community/nixos-generators): register our own variant
+          # next to the built-in ones. The built-in `openstack` variant
+          # bakes the whole nixpkgs channel into an uncompressed qcow2;
+          # `openstack-slim` does not (see openstack-slim.nix).
+          ({ ... }: { image.modules.openstack-slim = ./openstack-slim.nix; })
+        ];
       };
+    in
+    {
+      nixosConfigurations.openstack = nixos;
+      packages.x86_64-linux.openstack = nixos.config.system.build.images.openstack-slim;
     };
-  };
 }

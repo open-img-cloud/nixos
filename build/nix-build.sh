@@ -13,7 +13,7 @@
 #   0. Install Nix via curl|sh (single-user mode, no daemon)
 #   1. Enable flakes + kvm features in /etc/nix/nix.conf
 #   2. Render flake.nix from flake.nix.template (substitute VERSION)
-#   3. nix build .#openstack       (calls nixos-generators with our config.nix)
+#   3. nix build .#openstack       (system.build.images.openstack-slim, native image framework)
 #   4. Copy result/nixos.qcow2 into the workflow's output dir, renamed.
 
 set -euo pipefail
@@ -34,8 +34,8 @@ echo "[nix-build] config_dir=$CONFIG_DIR"
 #   systemd).
 # - flakes + nix-command experimental features so we can use them
 #   immediately (nix.conf entries persist across the install).
-# - system-features = kvm so nixos-generators is happy invoking the
-#   guest kernel build.
+# - system-features = kvm so make-disk-image can run its build VM
+#   (KVM is exposed by the privileged build container).
 # The installer otherwise refuses-to-install-as-root unless it sees
 # the nixbld group already.
 mkdir -p /etc/nix
@@ -80,8 +80,8 @@ nix build .#openstack
 mkdir -p "$OUT_DIR"
 final="${OUT_DIR}/nixos-${VERSION}-x86_64.qcow2"
 
-# nixos-generators emits a single .qcow2 in the result/ symlink dir,
-# typically named `nixos.qcow2`. Copy out (don't move; result/ is a
+# make-disk-image emits a single .qcow2 in the result/ symlink dir,
+# named after image.baseName. Copy out (don't move; result/ is a
 # read-only Nix store path) and resolve symlinks to a regular file.
 src=$(find -L result -maxdepth 2 -type f -name '*.qcow2' | head -1)
 if [[ -z "$src" ]]; then

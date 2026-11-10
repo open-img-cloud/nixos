@@ -1,26 +1,30 @@
-# Custom nixos-generators format wrapper that's identical to the
-# upstream `openstack` format BUT calls `make-disk-image.nix` with
-# `copyChannel = false`. Saves ~500-1500 MB by not baking the full
-# nixpkgs channel into the qcow2: operators bootstrap the channel
-# at first boot if they need it.
+# `openstack-slim` image variant for the native NixOS image framework
+# (`image.modules`, built through `system.build.images.openstack-slim`).
 #
-# Imports the same upstream openstack module so the
-# `services.openssh` + `systemd.services.openstack-init` /
-# `apply-openstack-data` configuration we rely on stays consistent.
+# Same base as the built-in `openstack` variant (openstack-config.nix:
+# sshd, openstack-init / apply-openstack-data metadata services), but
+# make-disk-image is called with:
+#   - copyChannel = false: the nixpkgs channel is not baked into the
+#     qcow2 (saves ~500-1500 MB; operators bootstrap a channel at first
+#     boot if they need one);
+#   - format = "qcow2-compressed" and diskSize = "auto": smallest file,
+#     the root partition grows on first boot.
 { config, lib, pkgs, modulesPath, ... }:
 {
   imports = [
-    "${toString modulesPath}/virtualisation/openstack-config.nix"
+    "${modulesPath}/virtualisation/openstack-config.nix"
+    "${modulesPath}/image/file-options.nix"
   ];
 
-  system.build.openstackImage = import "${toString modulesPath}/../lib/make-disk-image.nix" {
+  image.extension = "qcow2";
+  system.nixos.tags = [ "openstack" ];
+
+  system.build.image = import "${modulesPath}/../lib/make-disk-image.nix" {
     inherit lib config pkgs;
+    inherit (config.image) baseName;
     diskSize = "auto";
     format = "qcow2-compressed";
     copyChannel = false;
-    configFile = pkgs.writeText "configuration.nix" (pkgs.lib.readFile ./config.nix);
+    configFile = pkgs.writeText "configuration.nix" (lib.readFile ./config.nix);
   };
-
-  formatAttr = "openstackImage";
-  fileExtension = ".qcow2";
 }

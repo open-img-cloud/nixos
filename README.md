@@ -27,8 +27,9 @@
 ## About
 
 This repo builds [NixOS][nixos] cloud images via a Nix flake that
-imports [nix-community/nixos-generators][nixos-generators] and
-declares an OpenStack-friendly NixOS configuration. Build is driven by
+declares an OpenStack-friendly NixOS configuration and builds it with
+the native NixOS image framework (`image.modules`, nixpkgs 25.05+),
+through a custom `openstack-slim` variant. Build is driven by
 the openimages.cloud reusable [`build-nix-flake-image.yml`][reusable]
 workflow (third paradigm after libguestfs and DIB).
 
@@ -181,7 +182,6 @@ Kevin Allioli · kevin@stackops.ch · [@stackopshq](https://twitter.com/stackops
 Project: [open-img-cloud/nixos](https://github.com/open-img-cloud/nixos)
 
 [nixos]: https://nixos.org/
-[nixos-generators]: https://github.com/nix-community/nixos-generators
 [reusable]: https://github.com/open-img-cloud/.github/blob/main/.github/workflows/build-nix-flake-image.yml
 [legacy]: https://github.com/linitio/openstack-nixos-image
 [org]: https://github.com/open-img-cloud

@@ -1,7 +1,7 @@
 { config, lib, pkgs, modulesPath, ... }:
 {
-  # Imports for the qemu/cloud profile. Note: the nixos-generators
-  # `openstack` format we target also imports
+  # Imports for the qemu/cloud profile. Note: the `openstack-slim`
+  # image variant we build (openstack-slim.nix) also imports
   # `nixos/modules/virtualisation/openstack-config.nix` automatically,
   # which provides:
   #   - sshd with PermitRootLogin = "prohibit-password"
@@ -86,7 +86,7 @@
   #    the bigger wins are the channel + docs.
 
   # `copyChannel` is a make-disk-image argument, not a NixOS module
-  # option: see flake.nix.template's customFormats override which
+  # option: see openstack-slim.nix, which
   # pins it to false (saves ~500-1500 MB; biggest single shrink lever
   # for cloud images that bootstrap their channel via cloud-config).
 }

@@ -23,7 +23,10 @@
   };
 
   boot.growPartition = true;
-  boot.kernelParams = [ "console=tty1" ];
+  # tty1 for the VNC console, ttyS0 (last, so it owns /dev/console) for the
+  # serial log that `openstack console log show` and Proxmox read
+  # (IMAGE_STANDARDS.md, section C).
+  boot.kernelParams = [ "console=tty1" "console=ttyS0,115200n8" ];
   boot.loader.grub.device = "/dev/vda";
   boot.loader.timeout = 1;
   boot.loader.grub.extraConfig = ''
@@ -49,6 +52,31 @@
   users.users.nixos = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
+  };
+
+  # Upstream's metadata fetcher (openstack-config.nix -> ec2-data.nix)
+  # writes the instance SSH key to root's authorized_keys only. Root
+  # login is disabled above, so without this the image is unreachable:
+  # install the same key for the `nixos` user (IMAGE_STANDARDS.md, D.3).
+  systemd.services.oic-default-user-ssh-key = {
+    description = "Install the instance SSH key for the nixos user";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "apply-ec2-data.service" ];
+    wants = [ "apply-ec2-data.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      key=/etc/ec2-metadata/public-keys-0-openssh-key
+      if [ -s "$key" ]; then
+        install -d -m 0700 -o nixos -g users /home/nixos/.ssh
+        install -m 0600 -o nixos -g users "$key" /home/nixos/.ssh/authorized_keys
+        echo "SSH key installed for nixos"
+      else
+        echo "no SSH key in instance metadata"
+      fi
+    '';
   };
 
   nix.settings.auto-optimise-store = true;

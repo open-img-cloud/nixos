@@ -1,48 +1,56 @@
 #!/usr/bin/env bash
-# Prints the latest NixOS stable release version on stdout (e.g. "25.11").
+# Prints the latest NixOS stable release version on stdout (e.g. "26.05").
 #
 # NixOS uses a YY.MM release scheme on a 6-month cadence (May / November).
-# `release-X.Y` and `nixos-X.Y` branches on github.com/NixOS/nixpkgs are
-# the canonical signal; we list them via the Gitea-compatible API on
-# nixpkgs's mirror and pick the highest semver-style.
 #
-# Falls back to scraping channels.nixos.org if the API isn't reachable.
+# Primary signal: release tags on github.com/NixOS/nixpkgs (e.g. "26.05").
+# A tag is only pushed once the release is official, whereas the
+# `nixos-X.Y` branch exists from branch-off (beta) onwards, so tags never
+# report a pre-release. The `git/matching-refs` endpoint returns every
+# matching ref in one response (no pagination), unlike `/branches`, which
+# only returns the first 100 branches alphabetically and missed new
+# releases.
+#
+# Fallback: probe channels.nixos.org for the next YY.05 / YY.11 channels
+# after the version pinned in VERSION. Note that a channel may already
+# exist during beta; the fallback is only used if the GitHub API fails.
 #
 # Runs in the upstream-watch reusable workflow (no KVM needed) — keep
-# it portable bash + curl + sort only.
+# it portable bash + curl + grep + sort only.
 
 set -euo pipefail
 
-# Try GitHub API first (rate-limit-aware, but unauthenticated should
-# work given how rarely this fires).
-api_branches=$(curl -fsL \
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+latest=$(curl -fsL \
   -H 'Accept: application/vnd.github+json' \
-  'https://api.github.com/repos/NixOS/nixpkgs/branches?per_page=100' 2>/dev/null \
-  | grep -oE '"name":[[:space:]]*"nixos-[0-9]+\.[0-9]+"' \
-  | grep -oE '[0-9]+\.[0-9]+' \
+  'https://api.github.com/repos/NixOS/nixpkgs/git/matching-refs/tags/' 2>/dev/null \
+  | grep -oE '"ref":[[:space:]]*"refs/tags/[0-9]{2}\.(05|11)"' \
+  | grep -oE '[0-9]{2}\.(05|11)' \
+  | sort -uV | tail -n1 \
   || true)
 
-if [[ -n "$api_branches" ]]; then
-  latest=$(printf '%s\n' "$api_branches" | sort -uV | tail -n1)
-fi
-
-# Fallback: parse channels.nixos.org redirect.
-if [[ -z "${latest:-}" ]]; then
-  redirect=$(curl -fsI 'https://channels.nixos.org/nixos-25.11' 2>/dev/null \
-    | awk -F': ' 'tolower($1)=="location"{sub(/\r$/,"",$2); print $2; exit}' \
-    || true)
-  # Above just confirms 25.11 exists. For a generic "latest" via channels,
-  # there's no single index URL; we'd have to probe N+1 / N+2 sequentially.
-  # Skipping that fallback for now — the GitHub API path is reliable.
-  if [[ -z "$redirect" ]]; then
-    echo "::error::could not list NixOS branches from GitHub API and channels.nixos.org probe failed" >&2
+if [[ -z "$latest" ]]; then
+  echo "::warning::GitHub API unavailable, falling back to channels.nixos.org probing" >&2
+  current=$(tr -d '[:space:]' < "$script_dir/../VERSION" 2>/dev/null || true)
+  if [[ ! "$current" =~ ^([0-9]{2})\.(05|11)$ ]]; then
+    echo "::error::could not list nixpkgs tags and VERSION ('$current') is not YY.05/YY.11" >&2
     exit 1
   fi
-  latest="25.11"
+  latest=$current
+  yy=$((10#${BASH_REMATCH[1]})); mm=${BASH_REMATCH[2]}
+  # Walk forward release by release until a channel is missing.
+  while :; do
+    if [[ $mm == 05 ]]; then mm=11; else mm=05; yy=$((yy + 1)); fi
+    candidate=$(printf '%02d.%s' "$yy" "$mm")
+    code=$(curl -s -o /dev/null -w '%{http_code}' -I "https://channels.nixos.org/nixos-$candidate" || true)
+    [[ $code == 200 || $code == 301 || $code == 302 ]] || break
+    latest=$candidate
+  done
 fi
 
 if [[ -z "${latest:-}" ]]; then
-  echo "::error::no NixOS release branches found on github.com/NixOS/nixpkgs" >&2
+  echo "::error::no NixOS release found on github.com/NixOS/nixpkgs" >&2
   exit 1
 fi
 

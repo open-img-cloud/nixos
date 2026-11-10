@@ -113,7 +113,7 @@ metadata service.
 > `169.254.169.254`. **ConfigDrive** (the vfat label `config-2` Proxmox
 > emits) is **not** read. NixOS images deployed on Proxmox won't pick
 > up SSH keys / hostname unless the network metadata is reachable.
-> Tracked as a follow-up — see the comment in `config.nix`.
+> Tracked as a follow-up: see the comment in `config.nix`.
 
 ## Release flow
 
@@ -161,12 +161,12 @@ LICENSE                                     GPL-2.0
   anything useful. Validation happens after publication via deploying
   the image into an OpenStack tenant.
 - **Build is deterministic.** Two builds of the same `flake.nix` +
-  `flake.lock` produce byte-identical qcow2s — Nix's whole point.
+  `flake.lock` produce byte-identical qcow2s: Nix's whole point.
 
 ## Contributing
 
 Fork, branch, PR. Keep changes focused. The most-touched file is
-`build/config.nix` — the NixOS module that defines the image. Adding
+`build/config.nix`: the NixOS module that defines the image. Adding
 ConfigDrive support there (parse `/dev/disk/by-label/config-2`) is
 the highest-priority follow-up.
 
@@ -176,7 +176,7 @@ Distributed under the GPL-2.0 License. See `LICENSE`.
 
 ## Contact
 
-Kevin Allioli — kevin@stackops.ch · [@stackopshq](https://twitter.com/stackopshq)
+Kevin Allioli · kevin@stackops.ch · [@stackopshq](https://twitter.com/stackopshq)
 
 Project: [open-img-cloud/nixos](https://github.com/open-img-cloud/nixos)
 

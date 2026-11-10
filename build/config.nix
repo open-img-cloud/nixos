@@ -9,7 +9,7 @@
   #     from 169.254.169.254)
   #   - systemd `apply-openstack-data` (applies hostname + SSH key)
   #   - SSH host key fingerprint print on console
-  # We don't reimplement those services here — only override what we
+  # We don't reimplement those services here: only override what we
   # need beyond upstream defaults.
   imports = [
     "${toString modulesPath}/profiles/qemu-guest.nix"
@@ -32,8 +32,8 @@
     terminal_input console serial
   '';
 
-  # Tighten the upstream PermitRootLogin = "prohibit-password" to "no"
-  # — we expose root only via the nixos user with sudo, never directly.
+  # Tighten the upstream PermitRootLogin = "prohibit-password" to "no":
+  # we expose root only via the nixos user with sudo, never directly.
   services.openssh.settings.PermitRootLogin = lib.mkForce "no";
 
   # Enable a getty on tty1 so the qemu serial console gives a login prompt.
@@ -63,8 +63,8 @@
   # past 2 GB. The four levers below trim it to ~600-800 MB without
   # functional impact:
 
-  # 1. Documentation (man, info, the static HTML NixOS manual, etc.)
-  #    — ~200-300 MB. Users can install on demand if they need it.
+  # 1. Documentation (man, info, the static HTML NixOS manual, etc.):
+  #    ~200-300 MB. Users can install on demand if they need it.
   documentation = {
     enable = false;
     man.enable = false;
@@ -80,13 +80,13 @@
     "C.UTF-8/UTF-8"
   ];
 
-  # 3. (Removed) `environment.noXlibs = true` — option deleted in
+  # 3. (Removed) `environment.noXlibs = true`: option deleted in
   #    NixOS 25.05+. Upstream rationale: it caused surprising
   #    breakages. The X libs we'd save are small (~50-100 MB) and
   #    the bigger wins are the channel + docs.
 
   # `copyChannel` is a make-disk-image argument, not a NixOS module
-  # option — see flake.nix.template's customFormats override which
+  # option: see flake.nix.template's customFormats override which
   # pins it to false (saves ~500-1500 MB; biggest single shrink lever
   # for cloud images that bootstrap their channel via cloud-config).
 }

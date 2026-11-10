@@ -15,7 +15,7 @@
 # after the version pinned in VERSION. Note that a channel may already
 # exist during beta; the fallback is only used if the GitHub API fails.
 #
-# Runs in the upstream-watch reusable workflow (no KVM needed) — keep
+# Runs in the upstream-watch reusable workflow (no KVM needed): keep
 # it portable bash + curl + grep + sort only.
 
 set -euo pipefail

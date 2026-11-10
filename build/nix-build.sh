@@ -85,7 +85,7 @@ final="${OUT_DIR}/nixos-${VERSION}-x86_64.qcow2"
 # read-only Nix store path) and resolve symlinks to a regular file.
 src=$(find -L result -maxdepth 2 -type f -name '*.qcow2' | head -1)
 if [[ -z "$src" ]]; then
-  echo "::error::no .qcow2 found under result/ — flake build may have produced an unexpected layout"
+  echo "::error::no .qcow2 found under result/, flake build may have produced an unexpected layout"
   ls -la result/ || true
   exit 1
 fi

@@ -56,7 +56,7 @@ jobs:
       version: ${{ needs.resolve-version.outputs.version }}
       output_filename: 'nixos-{version}-x86_64.qcow2'
       build_script: build/nix-build.sh
-      # Run on GH-hosted ubuntu-latest like the DIB workflows — Nix
+      # Run on GH-hosted ubuntu-latest like the DIB workflows: Nix
       # builds inside its own sandbox, but the surrounding actions
       # (cosign / publish-image) are simpler on a real Linux VM with
       # Docker than on our self-hosted Rocky+rootless-Podman runners.

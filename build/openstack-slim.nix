@@ -1,7 +1,7 @@
 # Custom nixos-generators format wrapper that's identical to the
 # upstream `openstack` format BUT calls `make-disk-image.nix` with
 # `copyChannel = false`. Saves ~500-1500 MB by not baking the full
-# nixpkgs channel into the qcow2 — operators bootstrap the channel
+# nixpkgs channel into the qcow2: operators bootstrap the channel
 # at first boot if they need it.
 #
 # Imports the same upstream openstack module so the

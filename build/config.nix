@@ -38,6 +38,10 @@
   # Tighten the upstream PermitRootLogin = "prohibit-password" to "no":
   # we expose root only via the nixos user with sudo, never directly.
   services.openssh.settings.PermitRootLogin = lib.mkForce "no";
+  # Public key only: keyboard-interactive can still ask a password through
+  # PAM (reported by the catalog runtime smoke).
+  services.openssh.settings.PasswordAuthentication = lib.mkForce false;
+  services.openssh.settings.KbdInteractiveAuthentication = lib.mkForce false;
 
   # Enable a getty on tty1 so the qemu serial console gives a login prompt.
   systemd.services."serial-getty@tty1".enable = true;

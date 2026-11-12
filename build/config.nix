@@ -63,6 +63,10 @@
   # login is disabled above, so without this the image is unreachable:
   # install the same key for the `nixos` user (IMAGE_STANDARDS.md, D.3).
   services.openssh.enable = true;
+  # Guest agent: filesystem freeze for quiesced snapshots and IP reporting
+  # (the catalog sets hw_qemu_guest_agent=yes). profiles/qemu-guest.nix only
+  # loads the virtio drivers, it does not enable the agent.
+  services.qemuGuest.enable = true;
   # `cloud-init status` for operators (and the catalog runtime contract).
   environment.systemPackages = [ pkgs.cloud-init ];
 

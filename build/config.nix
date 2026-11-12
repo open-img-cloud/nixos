@@ -63,6 +63,8 @@
   # login is disabled above, so without this the image is unreachable:
   # install the same key for the `nixos` user (IMAGE_STANDARDS.md, D.3).
   services.openssh.enable = true;
+  # `cloud-init status` for operators (and the catalog runtime contract).
+  environment.systemPackages = [ pkgs.cloud-init ];
 
   # cloud-init, with the catalog policy (open-img-cloud/.github
   # templates/cloud.cfg.d/99_oic-policy.cfg): config drive first, read
@@ -90,6 +92,52 @@
         };
       };
       users = [ "default" ];
+      # NixOS generates the SSH host keys (sshd-keygen.service); cloud-init
+      # doing it too raced with it and failed that unit.
+      ssh_deletekeys = false;
+      ssh_genkeytypes = [ ];
+      # The NixOS module ships no logging config (cloud-init then reports
+      # "degraded"): log to /var/log/cloud-init.log as on other distros.
+      output.all = "| tee -a /var/log/cloud-init-output.log";
+      log_cfgs = [
+        [
+          ''
+            [loggers]
+            keys=root,cloudinit
+
+            [handlers]
+            keys=consoleHandler,cloudLogHandler
+
+            [formatters]
+            keys=arg0Formatter
+
+            [logger_root]
+            level=DEBUG
+            handlers=consoleHandler,cloudLogHandler
+
+            [logger_cloudinit]
+            level=DEBUG
+            qualname=cloudinit
+            handlers=
+            propagate=1
+
+            [handler_consoleHandler]
+            class=StreamHandler
+            level=WARNING
+            formatter=arg0Formatter
+            args=(sys.stderr,)
+
+            [handler_cloudLogHandler]
+            class=FileHandler
+            level=DEBUG
+            formatter=arg0Formatter
+            args=('/var/log/cloud-init.log', 'a', 'UTF-8')
+
+            [formatter_arg0Formatter]
+            format=%(asctime)s - %(filename)s[%(levelname)s]: %(message)s
+          ''
+        ]
+      ];
       disable_root = true;
       ssh_pwauth = false;
       preserve_hostname = false;

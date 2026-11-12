@@ -62,25 +62,38 @@
   # writes the instance SSH key to root's authorized_keys only. Root
   # login is disabled above, so without this the image is unreachable:
   # install the same key for the `nixos` user (IMAGE_STANDARDS.md, D.3).
-  systemd.services.oic-default-user-ssh-key = {
-    description = "Install the instance SSH key for the nixos user";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "apply-ec2-data.service" ];
-    wants = [ "apply-ec2-data.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
+  services.openssh.enable = true;
+
+  # cloud-init, with the catalog policy (open-img-cloud/.github
+  # templates/cloud.cfg.d/99_oic-policy.cfg): config drive first, read
+  # without network, then the HTTP metadata service. It sets the hostname,
+  # grows the root filesystem and installs the instance key for `nixos`.
+  # The network stays with NixOS (dhcpcd, IPv4 and DHCPv6): the NixOS
+  # cloud-init distro cannot render network configuration.
+  services.cloud-init = {
+    enable = true;
+    network.enable = false;
+    settings = {
+      datasource_list = [ "ConfigDrive" "OpenStack" "NoCloud" "None" ];
+      datasource.OpenStack = {
+        max_wait = 120;
+        timeout = 10;
+        retries = 5;
+      };
+      network.config = "disabled";
+      system_info = {
+        distro = "nixos";
+        default_user = {
+          name = "nixos";
+          lock_passwd = true;
+          groups = [ "wheel" ];
+        };
+      };
+      users = [ "default" ];
+      disable_root = true;
+      ssh_pwauth = false;
+      preserve_hostname = false;
     };
-    script = ''
-      key=/etc/ec2-metadata/public-keys-0-openssh-key
-      if [ -s "$key" ]; then
-        install -d -m 0700 -o nixos -g users /home/nixos/.ssh
-        install -m 0600 -o nixos -g users "$key" /home/nixos/.ssh/authorized_keys
-        echo "SSH key installed for nixos"
-      else
-        echo "no SSH key in instance metadata"
-      fi
-    '';
   };
 
   nix.settings.auto-optimise-store = true;

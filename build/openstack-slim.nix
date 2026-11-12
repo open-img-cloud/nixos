@@ -12,7 +12,9 @@
 { config, lib, pkgs, modulesPath, ... }:
 {
   imports = [
-    "${modulesPath}/virtualisation/openstack-config.nix"
+    # Not openstack-config.nix: its EC2-style metadata fetcher waits for the
+    # network and reads 169.254.169.254 only. cloud-init (config.nix) reads
+    # the config drive first, without network, like the rest of the catalog.
     "${modulesPath}/image/file-options.nix"
   ];
 

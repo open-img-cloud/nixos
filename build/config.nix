@@ -62,25 +62,100 @@
   # writes the instance SSH key to root's authorized_keys only. Root
   # login is disabled above, so without this the image is unreachable:
   # install the same key for the `nixos` user (IMAGE_STANDARDS.md, D.3).
-  systemd.services.oic-default-user-ssh-key = {
-    description = "Install the instance SSH key for the nixos user";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "apply-ec2-data.service" ];
-    wants = [ "apply-ec2-data.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
+  services.openssh.enable = true;
+  # `cloud-init status` for operators (and the catalog runtime contract).
+  environment.systemPackages = [ pkgs.cloud-init ];
+
+  # cloud-init, with the catalog policy (open-img-cloud/.github
+  # templates/cloud.cfg.d/99_oic-policy.cfg): config drive first, read
+  # without network, then the HTTP metadata service. It sets the hostname,
+  # grows the root filesystem and installs the instance key for `nixos`.
+  # The network stays with NixOS (dhcpcd, IPv4 and DHCPv6): the NixOS
+  # cloud-init distro cannot render network configuration.
+  services.cloud-init = {
+    enable = true;
+    network.enable = false;
+    settings = {
+      datasource_list = [ "ConfigDrive" "OpenStack" "NoCloud" "None" ];
+      datasource.OpenStack = {
+        max_wait = 120;
+        timeout = 10;
+        retries = 5;
+      };
+      network.config = "disabled";
+      system_info = {
+        distro = "nixos";
+        default_user = {
+          name = "nixos";
+          lock_passwd = true;
+          groups = [ "wheel" ];
+        };
+      };
+      users = [ "default" ];
+      # NixOS generates the SSH host keys (sshd-keygen.service); cloud-init
+      # doing it too raced with it and failed that unit.
+      # The nixpkgs default list minus keys-to-console, whose helper script
+      # the NixOS package does not ship (cloud-init then reports "degraded").
+      cloud_final_modules = [
+        "rightscale_userdata"
+        "scripts-vendor"
+        "scripts-per-once"
+        "scripts-per-boot"
+        "scripts-per-instance"
+        "scripts-user"
+        "ssh-authkey-fingerprints"
+        "phone-home"
+        "final-message"
+        "power-state-change"
+      ];
+      ssh_deletekeys = false;
+      ssh_genkeytypes = [ ];
+      # The NixOS module ships no logging config (cloud-init then reports
+      # "degraded"): log to /var/log/cloud-init.log as on other distros.
+      output.all = "| tee -a /var/log/cloud-init-output.log";
+      log_cfgs = [
+        [
+          ''
+            [loggers]
+            keys=root,cloudinit
+
+            [handlers]
+            keys=consoleHandler,cloudLogHandler
+
+            [formatters]
+            keys=arg0Formatter
+
+            [logger_root]
+            level=DEBUG
+            handlers=consoleHandler,cloudLogHandler
+
+            [logger_cloudinit]
+            level=DEBUG
+            qualname=cloudinit
+            handlers=
+            propagate=1
+
+            [handler_consoleHandler]
+            class=StreamHandler
+            level=WARNING
+            formatter=arg0Formatter
+            args=(sys.stderr,)
+
+            [handler_cloudLogHandler]
+            class=FileHandler
+            level=DEBUG
+            formatter=arg0Formatter
+            args=('/var/log/cloud-init.log', 'a', 'UTF-8')
+
+            [formatter_arg0Formatter]
+            format=%(asctime)s - %(filename)s[%(levelname)s]: %(message)s
+          ''
+        ]
+      ];
+      disable_root = true;
+      ssh_pwauth = false;
+      preserve_hostname = false;
     };
-    script = ''
-      key=/etc/ec2-metadata/public-keys-0-openssh-key
-      if [ -s "$key" ]; then
-        install -d -m 0700 -o nixos -g users /home/nixos/.ssh
-        install -m 0600 -o nixos -g users "$key" /home/nixos/.ssh/authorized_keys
-        echo "SSH key installed for nixos"
-      else
-        echo "no SSH key in instance metadata"
-      fi
-    '';
   };
 
   nix.settings.auto-optimise-store = true;

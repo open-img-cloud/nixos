@@ -94,6 +94,20 @@
       users = [ "default" ];
       # NixOS generates the SSH host keys (sshd-keygen.service); cloud-init
       # doing it too raced with it and failed that unit.
+      # The nixpkgs default list minus keys-to-console, whose helper script
+      # the NixOS package does not ship (cloud-init then reports "degraded").
+      cloud_final_modules = [
+        "rightscale_userdata"
+        "scripts-vendor"
+        "scripts-per-once"
+        "scripts-per-boot"
+        "scripts-per-instance"
+        "scripts-user"
+        "ssh-authkey-fingerprints"
+        "phone-home"
+        "final-message"
+        "power-state-change"
+      ];
       ssh_deletekeys = false;
       ssh_genkeytypes = [ ];
       # The NixOS module ships no logging config (cloud-init then reports

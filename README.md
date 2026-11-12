@@ -1,201 +1,125 @@
-<div id="top"></div>
+<p align="center">
+  <a href="https://openimages.cloud/images/nixos/">
+    <img src="https://openimages.cloud/img/og/nixos.png" alt="NixOS cloud image for OpenStack and Proxmox" width="720">
+  </a>
+</p>
 
-<!-- PROJECT SHIELDS -->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![GPL-2.0 License][license-shield]][license-url]
+<p align="center">
+  <a href="https://openimages.cloud/images/nixos/"><img alt="Latest version" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fimages.openimages.cloud%2Fnixos%2Flatest%2FMANIFEST.json&query=%24.version&label=latest&color=2459c4&cacheSeconds=3600"></a>
+  <a href="https://github.com/open-img-cloud/nixos/actions/workflows/release.yml"><img alt="Release" src="https://github.com/open-img-cloud/nixos/actions/workflows/release.yml/badge.svg"></a>
+  <a href="https://openimages.cloud/verify/"><img alt="Signed with Sigstore cosign" src="https://img.shields.io/badge/signed-Sigstore%20cosign-2459c4"></a>
+  <a href="https://openimages.cloud/quality/"><img alt="Boot-tested on OpenStack" src="https://img.shields.io/badge/boot--tested-OpenStack-2459c4"></a>
+  <a href="LICENSE"><img alt="License GPL-2.0" src="https://img.shields.io/badge/license-GPL--2.0-555"></a>
+</p>
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
+<p align="center">
+  <a href="https://openimages.cloud/images/nixos/"><b>Catalog page</b></a> ·
+  <a href="https://images.openimages.cloud/nixos/latest/">Download</a> ·
+  <a href="https://openimages.cloud/verify/">Verify</a> ·
+  <a href="https://github.com/open-img-cloud/docs">Documentation</a> ·
+  <a href="https://github.com/open-img-cloud/nixos/issues">Report an issue</a>
+</p>
 
-<h3 align="center">NixOS Cloud Images</h3>
+NixOS cloud image (qcow2) for **OpenStack** and **Proxmox**: built declaratively from a Nix
+flake with the native NixOS image framework, made ready for both clouds with the same rules as
+every [openimages.cloud](https://openimages.cloud) image, signed with Sigstore cosign and
+boot-tested on a real OpenStack before it is published.
 
-  <p align="center">
-    Signed NixOS images for OpenStack, built declaratively from a Nix
-    flake
-    <br />
-    <br />
-    <a href="https://github.com/open-img-cloud/nixos/issues">Report a bug</a>
-    ·
-    <a href="https://github.com/open-img-cloud/nixos/issues">Request a feature</a>
-  </p>
-</div>
+## At a glance
 
-## About
+| | |
+|---|---|
+| **Upstream** | [NixOS](https://nixos.org/), the `nixos-<version>` branch of [nixpkgs](https://github.com/NixOS/nixpkgs) |
+| **Default user** | `nixos`, SSH key only, passwordless `sudo` (group `wheel`) |
+| **Firmware** | BIOS |
+| **Format** | qcow2, x86_64, root filesystem grown to the disk at first boot |
+| **Version** | the NixOS release, `YY.MM`, e.g. `26.05` ([all versions](https://images.openimages.cloud/nixos/versions.json)) |
+| **Support** | Follows the NixOS release cycle (two releases a year, `YY.05` and `YY.11`) |
 
-This repo builds [NixOS][nixos] cloud images via a Nix flake that
-declares an OpenStack-friendly NixOS configuration and builds it with
-the native NixOS image framework (`image.modules`, nixpkgs 25.05+),
-through a custom `openstack-slim` variant. Build is driven by
-the openimages.cloud reusable [`build-nix-flake-image.yml`][reusable]
-workflow (third paradigm after libguestfs and DIB).
-
-NixOS is a third paradigm vs the cloud-init-based distros (alpaquita,
-alpine, AL2023, …): the OS doesn't ship cloud-init at all; instead a
-custom systemd service (`openstack-init`) defined in `build/config.nix`
-fetches the OpenStack `/1.0/meta-data/` HTTP endpoint at boot to apply
-hostname + SSH keys.
-
-This pipeline is the openimages.cloud-aligned successor of the legacy
-[`linitio/openstack-nixos-image`][legacy] (2024-04 vintage), rebuilt
-around cosign-signed releases, R2/Garage object storage, and the
-`build-nix-flake-image.yml` reusable.
-
-## Versioning
-
-`<version>` is the **NixOS release** (`YY.MM`, e.g. `25.11`), which
-maps to the matching `nixos-X.Y` branch of `github.com/NixOS/nixpkgs`.
-The flake input `nixpkgs.url` is rewritten to that branch at build
-time by `build/nix-build.sh` (substituting the literal `VERSION` token
-in `flake.nix.template`).
-
-`system.stateVersion` is set to the same value, pinning the on-disk
-defaults to that release.
-
-| NixOS release | Channel        |
-|---------------|----------------|
-| 25.05         | nixos-25.05    |
-| 25.11         | nixos-25.11 ← default |
-
-## Where to download
-
-Public CDN, served via Cloudflare in front of an R2 bucket (mirror of
-the source-of-truth Garage):
-
-| URL pattern                                                                | Cache policy                  |
-|----------------------------------------------------------------------------|-------------------------------|
-| `https://images.openimages.cloud/nixos/<version>/<filename>`               | `max-age=31536000, immutable` |
-| `https://images.openimages.cloud/nixos/latest/<filename>`                  | `max-age=300`                 |
-
-Browse: [images.openimages.cloud/nixos/latest/][latest]
-
-Filename: `nixos-<version>-x86_64.qcow2` (e.g. `nixos-25.11-x86_64.qcow2`).
-
-## Verify before deploy
-
-cosign 3.x:
+## Quick start
 
 ```sh
-sha256sum -c <filename>.sha256                    # integrity
-cosign verify-blob \
-    --bundle <filename>.bundle \
-    --new-bundle-format \
-    --certificate-identity-regexp '^https://github.com/open-img-cloud/\.github/\.github/workflows/build-nix-flake-image\.yml@' \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-    <filename>                                     # provenance
+# Latest version and its file name, from the signed manifest
+M=https://images.openimages.cloud/nixos/latest/MANIFEST.json
+V=$(curl -fsS $M | jq -r .version); F=$(curl -fsS $M | jq -r .filename)
+curl -fLO https://images.openimages.cloud/nixos/$V/$F
 ```
 
-## How to use
-
-### OpenStack
+<details>
+<summary><b>OpenStack</b></summary>
 
 ```sh
-# Pull the qcow2 (replace <V> with the desired NixOS release, e.g. 25.11)
-curl -fLO https://images.openimages.cloud/nixos/<V>/nixos-<V>-x86_64.qcow2
-
-openstack image create \
-    --disk-format qcow2 --container-format bare \
-    --min-disk 5 \
-    --file nixos-<V>-x86_64.qcow2 \
-    "NixOS <V>"
+openstack image create --disk-format qcow2 --container-format bare \
+  --property os_distro=nixos --property os_version=$V \
+  --property hw_qemu_guest_agent=yes --property os_admin_user=nixos \
+  --file "$F" "NixOS $V"
 ```
 
-The default user is `nixos` (passwordless sudo via wheel). SSH keys
-come from `/1.0/meta-data/public-keys/0/openssh-key` of the OpenStack
-metadata service.
+The full property set (SCSI disk, multiqueue, quiesced snapshots) is on the
+[catalog page](https://openimages.cloud/images/nixos/) and in
+[`index.json`](https://images.openimages.cloud/index.json). To keep images up to date
+automatically, use [oic-sync](https://github.com/open-img-cloud/oic-sync).
 
-### Proxmox VE
+</details>
 
-> ⚠️ **Known limitation**: the current `openstack-init` service in
-> `build/config.nix` only fetches metadata over HTTP from
-> `169.254.169.254`. **ConfigDrive** (the vfat label `config-2` Proxmox
-> emits) is **not** read. NixOS images deployed on Proxmox won't pick
-> up SSH keys / hostname unless the network metadata is reachable.
-> Tracked as a follow-up: see the comment in `config.nix`.
+<details>
+<summary><b>Proxmox VE</b></summary>
 
-## Release flow
+The commands to create a cloud-init template from this image are on the
+[catalog page](https://openimages.cloud/images/nixos/).
 
-1. **`watch.yml`** runs daily 06:59 UTC, calls `build/detect-upstream.sh`
-   which queries `api.github.com/repos/NixOS/nixpkgs/branches` and
-   emits the highest `nixos-X.Y` branch.
-2. If the version differs from `VERSION`, the workflow opens a PR
-   `auto/upstream-bump`.
-3. Merging the PR + pushing a `v<VERSION>` tag fires `release.yml`,
-   which calls the shared `build-nix-flake-image.yml@main` reusable
-   workflow.
-4. The reusable runs `build/nix-build.sh` inside the `nixos/nix:2.21.2`
-   container on a GH-hosted ubuntu-latest runner. The script enables
-   flakes + kvm system features in `/etc/nix/nix.conf`, renders
-   `flake.nix` from `flake.nix.template`, runs `nix build .#openstack`,
-   and copies the result to the workflow's output dir.
-5. Output qcow2 is signed (cosign keyless), bundled with MANIFEST,
-   uploaded to Garage + R2, and Cloudflare cache for `latest/` is
-   purged.
+</details>
 
-## Repository layout
+<details>
+<summary><b>Verify the signature</b></summary>
 
-```
-VERSION                                     single line, e.g. "25.11"
-build/
-  nix-build.sh                              builds the flake's `openstack` package
-  detect-upstream.sh                        prints latest nixos-X.Y branch on stdout
-  flake.nix.template                        flake.nix with VERSION token to substitute
-  config.nix                                NixOS module (bootloader, openssh, openstack-init)
-.github/workflows/
-  release.yml                               calls build-nix-flake-image.yml on tag push
-  watch.yml                                 daily cron, calls upstream-watch.yml
-.gitignore                                  repo-local override for global build/ exclusion
-LICENSE                                     GPL-2.0
+```sh
+curl -fLO https://images.openimages.cloud/nixos/$V/$F.bundle
+cosign verify-blob "$F" --bundle "$F.bundle" \
+  --certificate-identity-regexp '^https://github.com/open-img-cloud/\.github/\.github/workflows/build-(libguestfs|dib|nix-flake|freebsd)-image\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-## Notes vs the cloud-init-based repos
+</details>
 
-- **No cloud-init.** NixOS implements its own metadata fetching via the
-  `openstack-init` systemd service in `build/config.nix`. The org-wide
-  `99_oic-policy.cfg` cloud-init drop-in injected by the libguestfs
-  reusable does NOT apply here.
-- **No smoke test in the reusable.** NixOS's metadata model is custom
-  enough that the generic ConfigDrive smoke loop wouldn't validate
-  anything useful. Validation happens after publication via deploying
-  the image into an OpenStack tenant.
-- **Build is deterministic.** Two builds of the same `flake.nix` +
-  `flake.lock` produce byte-identical qcow2s: Nix's whole point.
+## What this image contains
 
-## Contributing
+The whole image is declared in [`build/config.nix`](build/config.nix) and
+[`build/openstack-slim.nix`](build/openstack-slim.nix), built by `nix build .#openstack` from
+[`build/flake.nix.template`](build/flake.nix.template), whose `nixpkgs` input and
+`system.stateVersion` are set to the release in [`VERSION`](VERSION):
 
-Fork, branch, PR. Keep changes focused. The most-touched file is
-`build/config.nix`: the NixOS module that defines the image. Adding
-ConfigDrive support there (parse `/dev/disk/by-label/config-2`) is
-the highest-priority follow-up.
+- the `qemu-guest` and `headless` profiles, GRUB with the console on `tty1` and `ttyS0`;
+- cloud-init with the openimages.cloud policy: config drive read first, then the metadata
+  service; it sets the hostname, grows the root filesystem and installs the instance key for
+  `nixos`. The network stays with NixOS (DHCP, IPv4 and IPv6), since the NixOS cloud-init
+  distro cannot render network configuration;
+- sshd with public keys only, no root login, root password locked;
+- a slim image: no nixpkgs channel copied into the disk, no documentation, only the `C` and
+  `en_US` locales, compressed qcow2.
+
+Every release must pass the same [runtime contract](https://openimages.cloud/quality/) on
+OpenStack: SSH with the injected key, cloud-init finished, DNS, hostname, root filesystem grown,
+passwordless `sudo`, IPv6 address and egress.
+
+### Note
+
+The flake follows the `nixos-<version>` branch; the repository has no `flake.lock`, so each
+build takes the head of that branch at build time.
+
+## How releases happen
+
+1. Every day at 06:59 UTC a watcher looks for a new NixOS release tag in nixpkgs and opens a
+   pull request that bumps [`VERSION`](VERSION).
+2. Merging it is all it takes: the release is tagged, built, signed, boot-tested and
+   published, then `latest/` and the [catalog](https://openimages.cloud/images/) move to it.
+
+This repository only holds what is specific to NixOS: [`VERSION`](VERSION),
+the [`build/`](build) flake files, [`build/nix-build.sh`](build/nix-build.sh),
+[`build/detect-upstream.sh`](build/detect-upstream.sh) and thin workflows calling the shared
+pipeline in [`open-img-cloud/.github`](https://github.com/open-img-cloud/.github).
 
 ## License
 
-Distributed under the GPL-2.0 License. See `LICENSE`.
-
-## Contact
-
-Kevin Allioli · kevin@stackops.ch · [@stackopshq](https://twitter.com/stackopshq)
-
-Project: [open-img-cloud/nixos](https://github.com/open-img-cloud/nixos)
-
-[nixos]: https://nixos.org/
-[reusable]: https://github.com/open-img-cloud/.github/blob/main/.github/workflows/build-nix-flake-image.yml
-[legacy]: https://github.com/linitio/openstack-nixos-image
-[org]: https://github.com/open-img-cloud
-[shared]: https://github.com/open-img-cloud/.github
-[latest]: https://images.openimages.cloud/nixos/latest/
-
-<!-- shields -->
-[contributors-shield]: https://img.shields.io/github/contributors/open-img-cloud/nixos.svg?style=for-the-badge
-[contributors-url]: https://github.com/open-img-cloud/nixos/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/open-img-cloud/nixos.svg?style=for-the-badge
-[forks-url]: https://github.com/open-img-cloud/nixos/network/members
-[stars-shield]: https://img.shields.io/github/stars/open-img-cloud/nixos.svg?style=for-the-badge
-[stars-url]: https://github.com/open-img-cloud/nixos/stargazers
-[issues-shield]: https://img.shields.io/github/issues/open-img-cloud/nixos.svg?style=for-the-badge
-[issues-url]: https://github.com/open-img-cloud/nixos/issues
-[license-shield]: https://img.shields.io/github/license/open-img-cloud/nixos.svg?style=for-the-badge
-[license-url]: https://github.com/open-img-cloud/nixos/blob/main/LICENSE
+The build tooling in this repository is under [GPL-2.0](LICENSE). The image keeps the licensing
+terms of NixOS and of each package it contains. This project is not affiliated with the NixOS project.
